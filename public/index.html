@@ -1,0 +1,122 @@
+<html>
+
+<head>
+  <title>Business Agentic Platform Assets</title>
+  <link rel="icon" type="image/x-icon" href="/logo.png">
+  <script src="https://www.gstatic.com/firebasejs/8.0/firebase.js"></script>
+  <script type="module" src="superplug-web.js"></script>
+
+  <script>
+    let config = {};
+    let email = "";
+    let token = "";
+    fetch("/config").then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      config = {
+        apiKey: data.firebaseApiKey,
+        authDomain: data.firebaseAuthDomain,
+      };
+
+      firebase.initializeApp(config);
+
+      // get user state
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+          window.location.href = "/assets.html";
+        } else {
+          // User is signed out
+        }
+      });
+    });
+  </script>
+</head>
+
+<body>
+  <mv-elegant-header title="Business Agentic Platform Assets" titleImageUrl="logo.png" />
+
+</body>
+
+<script>
+  let menus = [
+    {
+      title: "Log in"
+    }];
+
+  let items = [
+    {
+      dateTime: "2 days ago",
+      categories: [
+        {
+          title: "Kubernetes",
+          url: "kubernetes.png"
+        }
+      ],
+      imageUrl: "dino.jpg",
+      title: "A New Frontier of Security: Creating Safe and Secure AI Models",
+      authorImageUrl: "profile.jpg",
+      authorName: "Chaim Gartenberg",
+      authorUrl: "https://google.com",
+      description: "Solve a prehistoric Google mystery and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.",
+      link: "https://google.com",
+      types: [
+        {
+          title: "Kubernetes",
+          url: "kubernetes.png"
+        }
+      ]
+    },
+    {
+      dateTime: "2 days ago",
+      categories: [
+        {
+          title: "Kubernetes",
+          url: "kubernetes.png"
+        }
+      ],
+      imageUrl: "dino.jpg",
+      title: "A New Frontier of Security: Creating Safe and Secure AI Models",
+      authorImageUrl: "profile.jpg",
+      authorName: "Chaim Gartenberg",
+      authorUrl: "https://google.com",
+      description: "Solve a prehistoric Google mystery and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.",
+      link: "https://google.com",
+      types: [
+        {
+          title: "Kubernetes",
+          url: "kubernetes.png"
+        }
+      ]
+    }
+  ];
+
+  customElements.whenDefined('mv-elegant-header').then(() => {
+    let header = document.querySelector('mv-elegant-header');
+    header.setAttribute("headerMenus", JSON.stringify(menus));
+  });
+
+  document.addEventListener("Log in", e => {
+    console.log(e);
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider)
+      .then((result) => {
+        var credential = result.credential;
+        // This gives you a Google Access Token. You can use it to access the Google API.
+        var token = credential.accessToken;
+        // The signed-in user info.
+        var user = result.user;
+      }).catch((error) => {
+        // Handle Errors here.
+        var errorCode = error.code;
+        var errorMessage = error.message;
+        // The email of the user's account used.
+        var email = error.email;
+        // The firebase.auth.AuthCredential type that was used.
+        var credential = error.credential;
+        console.error(error);
+      });
+
+  });
+</script>
+
+</html>

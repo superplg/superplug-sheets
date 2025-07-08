@@ -1,0 +1,110 @@
+<html>
+
+<head>
+  <title>Business Agentic Platform Assets</title>
+  <link rel="icon" type="image/x-icon" href="/logo.png">
+  <script src="https://www.gstatic.com/firebasejs/8.0/firebase.js"></script>
+  <script type="module" src="superplug-web.js"></script>
+
+  <script>
+    let config = {};
+    let email = "";
+    let token = "";
+    let userData = {};
+    let assetData = [];
+    fetch("/config").then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      config = {
+        apiKey: data.firebaseApiKey,
+        authDomain: data.firebaseAuthDomain,
+      };
+
+      firebase.initializeApp(config);
+
+      // get user state
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+          var uid = user.uid;
+          email = user.email;
+          userData = user;
+          // User is signed in
+          user.getIdToken(true).then(function (idToken) {
+            token = idToken;
+            
+            fetch("/data/bap-assets", {
+              headers: {
+                'Authorization': 'Bearer ' + token
+              }
+            }).then(function (response) {
+              return response.json();
+            }).then(function (data) {
+              console.log(data);
+              assetData = data;
+              load();
+            });
+          }).catch(function (error) {
+            console.error(error);
+          });
+        } else {
+          // User is signed out
+          window.location.href = "/";
+        }
+      });
+    });
+
+    function load() {
+      // remove header
+      var elem = document.querySelector("mv-elegant-header");
+      if (elem) {
+        elem.remove();
+      }
+      // remove spinner
+      var elem = document.querySelector("mv-elegant-spinner");
+      if (elem) {
+        elem.remove();
+      }
+      // build header data
+      let headerMenus = [
+        {
+          title: "Profile",
+          imageUrl: userData.photoURL,
+          imageShape: "round",
+          items: [
+            {
+              title: "Log out"
+            }
+          ]
+        }
+      ];
+      // create buffet
+      var buffet = document.createElement('mv-elegant-buffet');
+      buffet.setAttribute("title", "Business Agentic Platform Assets");  
+      buffet.setAttribute("titleImageUrl", "logo.png");
+      buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
+      buffet.setAttribute("items", JSON.stringify(assetData));
+      document.body.appendChild(buffet);
+    }
+  </script>
+</head>
+
+<body>
+  <mv-elegant-header title="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
+  <mv-elegant-spinner></mv-elegant-spinner>
+</body>
+
+<script>
+
+  document.addEventListener("Log out", e => {
+    console.log(e);
+    firebase.auth().signOut().then(function() {
+      window.location.href = "/";
+    });
+  });
+</script>
+<style>
+  body {
+    margin: 0px;
+  }
+</style>
+</html>
