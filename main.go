@@ -22,6 +22,7 @@ import (
 )
 
 var config Config
+var cardsCache []map[string]interface{}
 
 func main() {
 
@@ -41,7 +42,8 @@ func main() {
 		ctx.JSON(200, configData)
 	})
 
-	r.GET("/data/:name", getData)
+	r.GET("/data/:name", getRecords)
+	r.GET("/data/:name/:id", getRecord)
 
 	fmt.Println("Starting service on 8080...")
 	r.Run(":8080")
@@ -69,7 +71,7 @@ func getSheetsService() *sheets.Service {
 	return srv
 }
 
-func getData(c *gin.Context) {
+func getRecords(c *gin.Context) {
 
 	sheetName := c.Param("name")
 	var sheetConfig ConfigSheet
@@ -82,95 +84,112 @@ func getData(c *gin.Context) {
 	}
 	srv := getSheetsService()
 
-	//readRange := "Assets!A3:P"
 	resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, sheetConfig.Range).Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
 
-	cards := transformToCardData(sheetConfig, resp.Values)
+	cardsCache = transformToCardData(sheetConfig, resp.Values)
 
-	c.JSON(200, cards)
+	c.JSON(200, cardsCache)
 }
 
-func transformToCardData(sheetConfig ConfigSheet, values [][]interface{}) []Card {
+func getRecord(c *gin.Context) {
 
-	cards := []Card{}
+	sheetName := c.Param("name")
+	id := c.Param("id")
+	var sheetConfig ConfigSheet
+
+	if len(cardsCache) == 0 {
+		for _, value := range config.Sheets {
+			if value.Name == sheetName {
+				sheetConfig = value
+				break
+			}
+		}
+		srv := getSheetsService()
+
+		resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, sheetConfig.Range).Do()
+		if err != nil {
+			log.Fatalf("Unable to retrieve data from sheet: %v", err)
+		}
+
+		cardsCache = transformToCardData(sheetConfig, resp.Values)
+	}
+
+	var lineCard map[string]interface{}
+	for _, card := range cardsCache {
+		if card["id"] == id {
+			lineCard = card
+			break
+		}
+	}
+
+	c.JSON(200, lineCard)
+}
+
+func transformToCardData(sheetConfig ConfigSheet, values [][]interface{}) []map[string]interface{} {
+
+	records := []map[string]interface{}{}
 
 	for _, row := range values {
 		if len(row) == 0 {
 			continue
 		}
 
-		card := Card{}
+		var record = make(map[string]interface{})
+
 		for _, field := range sheetConfig.Fields {
-			switch field.Type {
-			case "name":
-				card.Title = row[field.Index].(string)
-			case "author":
-				card.AuthorName = row[field.Index].(string)
-			case "link":
-				card.Link = row[field.Index].(string)
-			case "description":
-				card.Description = row[field.Index].(string)
-			case "date":
-				card.Date = row[field.Index].(string)
-				card.DateTime = card.Date
-			case "types":
-				if field.Index < len(row) {
-					types := strings.Split(row[field.Index].(string), ",")
-					for i := range types {
-						typeId := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(types[i])), " ", "-")
+			if field.Index >= len(row) {
+				continue
+			}
 
-						val, ok := sheetConfig.Types[typeId]
-						if ok {
-							card.Types = append(card.Types, val)
-						} else {
-							card.Types = append(card.Types, Tag{Name: types[i], Id: typeId})
-						}
+			record[field.Type] = row[field.Index].(string)
+			val, ok := sheetConfig.Types[field.Type]
+			if ok {
+				values := strings.Split(row[field.Index].(string), ",")
+				var valueTags []Tag
+				for i := range values {
+					valueId := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(values[i])), " ", "-")
+
+					val, ok := val[valueId]
+					if ok {
+						val.Id = valueId
+						valueTags = append(valueTags, val)
+					} else {
+						valueTags = append(valueTags, Tag{Name: values[i], Id: valueId})
 					}
 				}
-			case "categories":
-				if field.Index < len(row) {
-					categories := strings.Split(row[field.Index].(string), ",")
-					for i := range categories {
-						categoryId := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(categories[i])), " ", "-")
 
-						val, ok := sheetConfig.Categories[categoryId]
-						if ok {
-							card.Categories = append(card.Categories, val)
-						} else {
-							card.Categories = append(card.Categories, Tag{Name: categories[i], Id: categoryId})
-						}
-					}
-				}
+				record[field.Type] = valueTags
+				record[field.Type+"Text"] = row[field.Index].(string)
 			}
 		}
 
-		cards = append(cards, card)
+		records = append(records, record)
 	}
 
-	sort.SliceStable(cards, func(i, j int) bool {
-		date1, _ := time.Parse("1/2/2006", cards[i].Date)
-		date2, _ := time.Parse("1/2/2006", cards[j].Date)
+	if sheetConfig.Sort.Field != "" {
+		sort.SliceStable(records, func(i, j int) bool {
+			dateString1 := records[i][sheetConfig.Sort.Field].(string)
+			dateString2 := records[j][sheetConfig.Sort.Field].(string)
 
-		return date1.Unix() > date2.Unix()
-	})
+			date1, _ := time.Parse(sheetConfig.Sort.Format, dateString1)
+			date2, _ := time.Parse(sheetConfig.Sort.Format, dateString2)
 
-	return cards
+			if sheetConfig.Sort.Direction == "desc" {
+				return date1.Unix() > date2.Unix()
+			} else {
+				return date1.Unix() < date2.Unix()
+			}
+		})
+	}
+
+	return records
 }
 
-type Card struct {
-	Title       string `json:"title"`
-	AuthorName  string `json:"authorName"`
-	AuthorUrl   string `json:"authorUrl"`
-	DateTime    string `json:"dateTime"`
-	Date        string `json:"date"`
-	Link        string `json:"link"`
-	Description string `json:"description"`
-	ImageUrl    string `json:"image"`
-	Types       []Tag  `json:"types"`
-	Categories  []Tag  `json:"categories"`
+type Record struct {
+	Fields map[string]interface{} `json:"fields"`
 }
 
 type Config struct {
@@ -178,15 +197,17 @@ type Config struct {
 }
 
 type ConfigSheet struct {
-	SheetId               string             `yaml:"sheetId"`
-	Name                  string             `yaml:"name"`
-	Range                 string             `yaml:"range"`
-	TypeColors            map[string]string  `yaml:"typeColors"`
-	TypeAbbreviations     map[string]string  `yaml:"typeAbbreviations"`
-	CategoryAbbreviations map[string]string  `yaml:"categoryAbbreviations"`
-	Fields                []ConfigSheetField `yaml:"fields"`
-	Categories            map[string]Tag     `yaml:"categories"`
-	Types                 map[string]Tag     `yaml:"types"`
+	SheetId string          `yaml:"sheetId"`
+	Name    string          `yaml:"name"`
+	Range   string          `yaml:"range"`
+	Sort    ConfigSheetSort `yaml:"sort"`
+	// TypeColors            map[string]string         `yaml:"typeColors"`
+	// TypeAbbreviations     map[string]string         `yaml:"typeAbbreviations"`
+	// CategoryAbbreviations map[string]string         `yaml:"categoryAbbreviations"`
+	Fields []ConfigSheetField        `yaml:"fields"`
+	Types  map[string]map[string]Tag `yaml:"types"`
+	// Categories            map[string]Tag     `yaml:"categories"`
+	// Types                 map[string]Tag     `yaml:"types"`
 }
 
 type ConfigSheetField struct {
@@ -194,6 +215,12 @@ type ConfigSheetField struct {
 	Index      int    `yaml:"index"`
 	Type       string `yaml:"type"`
 	Visibility string `yaml:"visibility"`
+}
+
+type ConfigSheetSort struct {
+	Field     string `yaml:"field"`
+	Format    string `yaml:"format"`
+	Direction string `yaml:"direction"`
 }
 
 type Tag struct {
