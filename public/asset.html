@@ -131,6 +131,9 @@
               title: "Log out"
             }
           ]
+        },
+        {
+          title: "Edit"
         }
       ];
 
@@ -138,7 +141,8 @@
 
       // create buffet view
       var buffet = document.createElement('mv-elegant-buffet-view');
-      buffet.setAttribute("title", "Business Agentic Platform Assets");  
+      buffet.setAttribute("title", "Business Agentic Platform Assets");
+      buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
       buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
       buffet.setAttribute("items", JSON.stringify(inputData));
@@ -159,6 +163,11 @@
     firebase.auth().signOut().then(function() {
       window.location.href = "/";
     });
+  });
+
+  document.addEventListener("Edit", e => {
+    console.log(e);
+    window.location.href = "/asset-edit.html?id=" + id;
   });
 </script>
 <style>

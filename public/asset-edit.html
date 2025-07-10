@@ -11,7 +11,12 @@
     let email = "";
     let token = "";
     let userData = {};
-    let assetData = [];
+    let assetData;
+    let inputData = [];
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let id = urlParams.get("id");
+
     fetch("/config").then(function (response) {
       return response.json();
     }).then(function (data) {
@@ -32,7 +37,7 @@
           user.getIdToken(true).then(function (idToken) {
             token = idToken;
             
-            fetch("/data/bap-assets", {
+            fetch("/data/bap-assets/" + id, {
               headers: {
                 'Authorization': 'Bearer ' + token
               }
@@ -41,9 +46,57 @@
             }).then(function (data) {
               console.log(data);
               assetData = data;
-              for(let asset of assetData) {
-                asset["link"] = "/asset.html?id=" + asset["id"];
-              }
+              inputData.push({
+                id: "title",
+                value: assetData.title,
+                type: "h1"
+              });
+              inputData.push({
+                id: "description",
+                value: assetData.description,
+                type: "h3"
+              });
+              inputData.push({
+                id: "authorName",
+                label: "By ",
+                labelType: "span",
+                link: "https://moma.corp.google.com/search?q=" + assetData.authorName,
+                value: assetData.authorName,
+                type: "link_blank"
+              });
+              inputData.push({
+                id: "dateTime",
+                value: assetData.dateTime,
+                type: "div"
+              });
+              inputData.push({
+                id: "types",
+                label: "Content types",
+                labelType: "h3",
+                value: assetData.typesText,
+                type: "ul"
+              });
+              inputData.push({
+                id: "links",
+                label: "Links",
+                labelType: "h3",
+                value: assetData.secondaryLinks ? assetData.link + "," + assetData.secondaryLinks : assetData.link,
+                type: "ul_link_blank"
+              });
+              inputData.push({
+                id: "categories",
+                label: "Products",
+                labelType: "h3",
+                value: assetData.categoriesText,
+                type: "ul"
+              });
+              inputData.push({
+                id: "levels",
+                label: "Levels",
+                labelType: "h3",
+                value: assetData.levels,
+                type: "ul"
+              });
               load();
             });
           }).catch(function (error) {
@@ -78,15 +131,21 @@
               title: "Log out"
             }
           ]
+        },
+        {
+          title: "Save"
         }
       ];
-      // create buffet
-      var buffet = document.createElement('mv-elegant-buffet');
+
+      console.log(inputData);
+
+      // create buffet view
+      var buffet = document.createElement('mv-elegant-buffet-view');
       buffet.setAttribute("title", "Business Agentic Platform Assets");
       buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
       buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
-      buffet.setAttribute("items", JSON.stringify(assetData));
+      buffet.setAttribute("items", JSON.stringify(inputData));
       document.body.appendChild(buffet);
     }
   </script>
@@ -104,6 +163,11 @@
     firebase.auth().signOut().then(function() {
       window.location.href = "/";
     });
+  });
+
+  document.addEventListener("Save", e => {
+    console.log(e);
+    window.location.href = "/assets.html";
   });
 </script>
 <style>

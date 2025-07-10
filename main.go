@@ -144,7 +144,12 @@ func transformToCardData(sheetConfig ConfigSheet, values [][]interface{}) []map[
 				continue
 			}
 
-			record[field.Type] = row[field.Index].(string)
+			if field.Value != "" {
+				record[field.Type] = field.Value
+			} else {
+				record[field.Type] = row[field.Index].(string)
+			}
+
 			val, ok := sheetConfig.Types[field.Type]
 			if ok {
 				values := strings.Split(row[field.Index].(string), ",")
@@ -214,6 +219,7 @@ type ConfigSheetField struct {
 	Name       string `yaml:"name"`
 	Index      int    `yaml:"index"`
 	Type       string `yaml:"type"`
+	Value      string `yaml:"value"`
 	Visibility string `yaml:"visibility"`
 }
 
