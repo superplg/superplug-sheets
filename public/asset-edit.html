@@ -48,54 +48,60 @@
               assetData = data;
               inputData.push({
                 id: "title",
+                label: "Title",
                 value: assetData.title,
-                type: "h1"
+                type: "input"
               });
               inputData.push({
                 id: "description",
+                label: "Description",
                 value: assetData.description,
-                type: "h3"
+                type: "textarea"
               });
               inputData.push({
                 id: "authorName",
-                label: "By ",
-                labelType: "span",
-                link: "https://moma.corp.google.com/search?q=" + assetData.authorName,
+                label: "Author",
                 value: assetData.authorName,
-                type: "link_blank"
+                type: "input"
               });
               inputData.push({
                 id: "dateTime",
+                label: "Date published",
                 value: assetData.dateTime,
-                type: "div"
+                type: "input"
               });
               inputData.push({
                 id: "types",
                 label: "Content types",
-                labelType: "h3",
                 value: assetData.typesText,
-                type: "ul"
+                options: assetData.typesOptions,
+                type: "multiselect"
               });
               inputData.push({
-                id: "links",
-                label: "Links",
-                labelType: "h3",
-                value: assetData.secondaryLinks ? assetData.link + "," + assetData.secondaryLinks : assetData.link,
-                type: "ul_link_blank"
+                id: "link",
+                label: "Primary link",
+                value: assetData.link,
+                type: "input"
+              });
+              inputData.push({
+                id: "secondaryLinks",
+                label: "Secondary link(s), comma separated",
+                value: assetData.secondaryLinks,
+                type: "textarea"
               });
               inputData.push({
                 id: "categories",
                 label: "Products",
-                labelType: "h3",
                 value: assetData.categoriesText,
-                type: "ul"
+                options: assetData.categoriesOptions,
+                type: "multiselect"
               });
               inputData.push({
                 id: "levels",
                 label: "Levels",
-                labelType: "h3",
-                value: assetData.levels,
-                type: "ul"
+                value: assetData.levelsText,
+                options: assetData.levelsOptions,
+                type: "multiselect"
               });
               load();
             });
@@ -140,7 +146,7 @@
       console.log(inputData);
 
       // create buffet view
-      var buffet = document.createElement('mv-elegant-buffet-view');
+      var buffet = document.createElement('mv-elegant-buffet-edit');
       buffet.setAttribute("title", "Business Agentic Platform Assets");
       buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
@@ -167,7 +173,8 @@
 
   document.addEventListener("Save", e => {
     console.log(e);
-    window.location.href = "/assets.html";
+    console.log(inputData);
+    // window.location.href = "/assets.html";
   });
 </script>
 <style>

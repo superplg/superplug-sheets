@@ -56,7 +56,6 @@ func getSheetsService() *sheets.Service {
 	}
 	ctx := context.Background()
 	credentials, _ := google.FindDefaultCredentials(ctx, scopes...)
-	//fmt.Println(string(credentials.JSON))
 	config, _ := google.ConfigFromJSON(credentials.JSON, scopes...)
 	tok, _ := credentials.TokenSource.Token()
 	client := config.Client(ctx, tok)
@@ -168,6 +167,15 @@ func transformToCardData(sheetConfig ConfigSheet, values [][]interface{}) []map[
 
 				record[field.Type] = valueTags
 				record[field.Type+"Text"] = row[field.Index].(string)
+				options := ""
+				for _, v := range val {
+					if options == "" {
+						options = v.Name
+					} else {
+						options += "," + v.Name
+					}
+				}
+				record[field.Type+"Options"] = options
 			}
 		}
 
