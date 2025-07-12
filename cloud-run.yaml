@@ -1,0 +1,30 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: asset-service
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      serviceAccountName: SERVICE_ACCOUNT
+      containers:
+      - image: IMAGE_PATH
+        volumeMounts:
+        - name: assetfs
+          mountPath: /mnt/config
+        env:
+          - name: FIREBASE_API_KEY
+            value: YOUR_FIREBASE_API_KEY
+          - name: FIREBASE_AUTH_DOMAIN
+            value: YOUR_FIREABSE_AUTH_DOMAIN
+          - name: SUPERPLUG_CONFIG_PATH
+            value: /mnt/config
+      volumes:
+      - name: assetfs
+        csi:
+          driver: gcsfuse.run.googleapis.com
+          readOnly: True
+          volumeAttributes:
+            bucketName: BUCKET_NAME

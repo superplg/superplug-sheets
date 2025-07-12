@@ -36,7 +36,7 @@
           // User is signed in
           user.getIdToken(true).then(function (idToken) {
             token = idToken;
-            
+
             fetch("/data/bap-assets/" + id, {
               headers: {
                 'Authorization': 'Bearer ' + token
@@ -59,6 +59,12 @@
                 type: "textarea"
               });
               inputData.push({
+                id: "image",
+                label: "Image",
+                value: assetData.imageUrl,
+                type: "file"
+              });
+              inputData.push({
                 id: "authorName",
                 label: "Author",
                 value: assetData.authorName,
@@ -71,13 +77,6 @@
                 type: "input"
               });
               inputData.push({
-                id: "types",
-                label: "Content types",
-                value: assetData.typesText,
-                options: assetData.typesOptions,
-                type: "multiselect"
-              });
-              inputData.push({
                 id: "link",
                 label: "Primary link",
                 value: assetData.link,
@@ -88,6 +87,13 @@
                 label: "Secondary link(s), comma separated",
                 value: assetData.secondaryLinks,
                 type: "textarea"
+              });
+              inputData.push({
+                id: "types",
+                label: "Content types",
+                value: assetData.typesText,
+                options: assetData.typesOptions,
+                type: "multiselect"
               });
               inputData.push({
                 id: "categories",
@@ -147,6 +153,7 @@
 
       // create buffet view
       var buffet = document.createElement('mv-elegant-buffet-edit');
+      buffet.setAttribute("formId", "asset-form");
       buffet.setAttribute("title", "Business Agentic Platform Assets");
       buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
@@ -166,14 +173,29 @@
 
   document.addEventListener("Log out", e => {
     console.log(e);
-    firebase.auth().signOut().then(function() {
+    firebase.auth().signOut().then(function () {
       window.location.href = "/";
     });
   });
 
   document.addEventListener("Save", e => {
     console.log(e);
+    // window.location.href = "/assets.html";
+  });
+
+  document.addEventListener("FormChangeEvent", e => {
+    if (e.detail && e.detail.items)
+      inputData = e.detail.items;
+
     console.log(inputData);
+    fetch("/data/bap-assets/" + id, {
+      method: "POST",
+      body: e.detail.formData
+    }).then(function (response) {
+
+    });
+
+
     // window.location.href = "/assets.html";
   });
 </script>
@@ -183,4 +205,5 @@
     font-family: sohne, "Helvetica Neue", Helvetica, Arial, sans-serif;
   }
 </style>
+
 </html>

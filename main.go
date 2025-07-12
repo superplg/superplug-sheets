@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"mime/multipart"
 	"os"
 	"sort"
 	"strings"
@@ -21,12 +22,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var configPath = "."
 var config Config
 var cardsCache []map[string]interface{}
 
 func main() {
-
-	yamlFile, err := os.ReadFile("config.local.yaml")
+	var envConfigPath = os.Getenv("SUPERPLUG_CONFIG_PATH")
+	if envConfigPath != "" {
+		configPath = envConfigPath
+	}
+	yamlFile, err := os.ReadFile(configPath + "/config.local.yaml")
 	if err == nil {
 		yaml.Unmarshal(yamlFile, &config)
 	} else {
@@ -44,6 +49,7 @@ func main() {
 
 	r.GET("/data/:name", getRecords)
 	r.GET("/data/:name/:id", getRecord)
+	r.POST("/data/:name/:id", postRecord)
 
 	fmt.Println("Starting service on 8080...")
 	r.Run(":8080")
@@ -68,6 +74,30 @@ func getSheetsService() *sheets.Service {
 	}
 
 	return srv
+}
+
+func postRecord(c *gin.Context) {
+	var files []multipart.FileHeader
+
+	form, _ := c.MultipartForm()
+
+	if form != nil && form.File != nil {
+		for k, v := range form.File {
+
+			fmt.Println("Found file: " + k)
+
+			for _, f := range v {
+				fmt.Println(&f.Filename)
+				files = append(files, *f)
+			}
+		}
+	}
+
+	for key, value := range c.Request.PostForm {
+		fmt.Printf("%v = %v \n", key, value)
+	}
+
+	c.Status(200)
 }
 
 func getRecords(c *gin.Context) {
