@@ -182,7 +182,7 @@
   document.addEventListener("Save", e => {
     fetch("/data/bap-assets/" + id, {
       method: "POST",
-      body: e.detail.formData
+      body: formData
     }).then(function (response) {
       window.location.href = "/assets.html";
     });
@@ -192,6 +192,8 @@
     if (e.detail) {
       inputData = e.detail.items;
       formData = e.detail.formData;
+
+      formData.set("hidden_row_index", assetData.hidden_row_index);
     }
   });
 </script>

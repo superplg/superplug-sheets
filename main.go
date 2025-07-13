@@ -6,7 +6,6 @@ import (
 	"mime/multipart"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -103,7 +102,7 @@ func postRecord(c *gin.Context) {
 		}
 	}
 
-	var data map[string]interface{}
+	var data map[string]string = make(map[string]string)
 	for key, value := range c.Request.PostForm {
 		fmt.Printf("%v = %v \n", key, value)
 		if value[0] != "undefined" {
@@ -116,16 +115,18 @@ func postRecord(c *gin.Context) {
 	valueRange := sheets.ValueRange{Values: valuesArray}
 	rowIndex := data["hidden_row_index"]
 
+	fmt.Println("Trying to update row: " + rowIndex)
+
 	// get sheet
-	rangeString := "A" + strconv.Itoa(rowIndex.(int))
+	rangeString := "A" + rowIndex
 	rangePieces := strings.Split(sheetConfig.Range, "!")
 	if len(rangePieces) > 1 {
-		rangeString = rangePieces[0] + rangeString
+		rangeString = rangePieces[0] + "!" + rangeString
 	}
 
 	fmt.Println("Preparing to update range: " + rangeString)
 
-	_, err := srv.Spreadsheets.Values.Update(sheetConfig.SheetId, rangeString, &valueRange).Do()
+	_, err := srv.Spreadsheets.Values.Update(sheetConfig.SheetId, rangeString, &valueRange).ValueInputOption("RAW").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
@@ -266,7 +267,7 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) []map[st
 	return records
 }
 
-func transformMapToVal(sheetConfig ConfigSheet, data map[string]interface{}) []interface{} {
+func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interface{} {
 	//var values []interface{}
 	size := 0
 	for _, field := range sheetConfig.Fields {
