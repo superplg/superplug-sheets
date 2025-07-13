@@ -13,6 +13,7 @@
     let userData = {};
     let assetData;
     let inputData = [];
+    let formData = undefined;
 
     const urlParams = new URLSearchParams(window.location.search);
     let id = urlParams.get("id");
@@ -179,24 +180,19 @@
   });
 
   document.addEventListener("Save", e => {
-    console.log(e);
-    // window.location.href = "/assets.html";
-  });
-
-  document.addEventListener("FormChangeEvent", e => {
-    if (e.detail && e.detail.items)
-      inputData = e.detail.items;
-
-    console.log(inputData);
     fetch("/data/bap-assets/" + id, {
       method: "POST",
       body: e.detail.formData
     }).then(function (response) {
-
+      window.location.href = "/assets.html";
     });
+  });
 
-
-    // window.location.href = "/assets.html";
+  document.addEventListener("FormChangeEvent", e => {
+    if (e.detail) {
+      inputData = e.detail.items;
+      formData = e.detail.formData;
+    }
   });
 </script>
 <style>

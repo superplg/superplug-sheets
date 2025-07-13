@@ -25,6 +25,6 @@ spec:
       - name: assetfs
         csi:
           driver: gcsfuse.run.googleapis.com
-          readOnly: True
+          readOnly: False
           volumeAttributes:
             bucketName: BUCKET_NAME

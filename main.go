@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,10 +78,19 @@ func getSheetsService() *sheets.Service {
 }
 
 func postRecord(c *gin.Context) {
+	sheetName := c.Param("name")
+	var sheetConfig ConfigSheet
+
+	for _, value := range config.Sheets {
+		if value.Name == sheetName {
+			sheetConfig = value
+			break
+		}
+	}
+	srv := getSheetsService()
+
 	var files []multipart.FileHeader
-
 	form, _ := c.MultipartForm()
-
 	if form != nil && form.File != nil {
 		for k, v := range form.File {
 
@@ -93,8 +103,31 @@ func postRecord(c *gin.Context) {
 		}
 	}
 
+	var data map[string]interface{}
 	for key, value := range c.Request.PostForm {
 		fmt.Printf("%v = %v \n", key, value)
+		if value[0] != "undefined" {
+			data[key] = value[0]
+		}
+	}
+
+	values := transformMapToVal(sheetConfig, data)
+	valuesArray := [][]interface{}{values}
+	valueRange := sheets.ValueRange{Values: valuesArray}
+	rowIndex := data["hidden_row_index"]
+
+	// get sheet
+	rangeString := "A" + strconv.Itoa(rowIndex.(int))
+	rangePieces := strings.Split(sheetConfig.Range, "!")
+	if len(rangePieces) > 1 {
+		rangeString = rangePieces[0] + rangeString
+	}
+
+	fmt.Println("Preparing to update range: " + rangeString)
+
+	_, err := srv.Spreadsheets.Values.Update(sheetConfig.SheetId, rangeString, &valueRange).Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
 
 	c.Status(200)
@@ -118,7 +151,7 @@ func getRecords(c *gin.Context) {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
 
-	cardsCache = transformToCardData(sheetConfig, resp.Values)
+	cardsCache = transformValToMap(sheetConfig, resp.Values)
 
 	c.JSON(200, cardsCache)
 }
@@ -143,7 +176,7 @@ func getRecord(c *gin.Context) {
 			log.Fatalf("Unable to retrieve data from sheet: %v", err)
 		}
 
-		cardsCache = transformToCardData(sheetConfig, resp.Values)
+		cardsCache = transformValToMap(sheetConfig, resp.Values)
 	}
 
 	var lineCard map[string]interface{}
@@ -157,16 +190,18 @@ func getRecord(c *gin.Context) {
 	c.JSON(200, lineCard)
 }
 
-func transformToCardData(sheetConfig ConfigSheet, values [][]interface{}) []map[string]interface{} {
+func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) []map[string]interface{} {
 
 	records := []map[string]interface{}{}
 
-	for _, row := range values {
+	for i, row := range values {
 		if len(row) == 0 {
 			continue
 		}
 
 		var record = make(map[string]interface{})
+
+		record["hidden_row_index"] = i
 
 		for _, field := range sheetConfig.Fields {
 			if field.Index >= len(row) {
@@ -229,6 +264,27 @@ func transformToCardData(sheetConfig ConfigSheet, values [][]interface{}) []map[
 	}
 
 	return records
+}
+
+func transformMapToVal(sheetConfig ConfigSheet, data map[string]interface{}) []interface{} {
+	//var values []interface{}
+	size := 0
+	for _, field := range sheetConfig.Fields {
+		if field.Index-1 > size {
+			size = field.Index - 1
+		}
+	}
+
+	values := make([]interface{}, size)
+
+	for _, field := range sheetConfig.Fields {
+		val, ok := data[field.Type]
+		if ok {
+			values[field.Index] = val
+		}
+	}
+
+	return values
 }
 
 type Record struct {
