@@ -12,6 +12,8 @@
     let token = "";
     let userData = {};
     let assetData = [];
+    let definitions = [];
+
     fetch("/config").then(function (response) {
       return response.json();
     }).then(function (data) {
@@ -40,7 +42,9 @@
               return response.json();
             }).then(function (data) {
               console.log(data);
-              assetData = data;
+              assetData = data.records;
+              definitions = data.definitions;
+
               for(let asset of assetData) {
                 asset["link"] = "/asset.html?id=" + asset["id"];
               }
@@ -87,6 +91,9 @@
       buffet.setAttribute("titleImageUrl", "logo.png");
       buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
       buffet.setAttribute("items", JSON.stringify(assetData));
+      if (definitions && definitions.categories) buffet.setAttribute("categories", JSON.stringify(definitions.categories));
+      if (definitions && definitions.types) buffet.setAttribute("types", JSON.stringify(definitions.types));
+      buffet.setAttribute("sortTypes", "Date Descending, Alphabetical");
       document.body.appendChild(buffet);
     }
   </script>

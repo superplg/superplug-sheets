@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"maps"
 	"mime/multipart"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -240,14 +242,14 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 				record[field.Definition] = valueTags
 				record[field.Definition+"Text"] = row[field.Index].(string)
 				options := ""
-				definitions[field.Definition] = make([]Tag, len(definition))
+				definitions[field.Definition] = slices.Collect(maps.Values(definition))
 				for _, v := range definition {
 					if options == "" {
 						options = v.Name
 					} else {
 						options += "," + v.Name
 					}
-					definitions[field.Definition] = append(definitions[field.Definition], v)
+					// definitions[field.Definition] = append(definitions[field.Definition], v)
 				}
 				record[field.Definition+"Options"] = options
 			}
@@ -301,8 +303,8 @@ type Record struct {
 }
 
 type RecordCache struct {
-	Records     []map[string]interface{}
-	Definitions map[string][]Tag
+	Records     []map[string]interface{} `json:"records"`
+	Definitions map[string][]Tag         `json:"definitions"`
 }
 
 type Config struct {
