@@ -24,7 +24,7 @@ import (
 
 var configPath = "."
 var config Config
-var cardsCache []map[string]interface{}
+var recordsCache map[string]RecordCache = make(map[string]RecordCache)
 
 func main() {
 	var envConfigPath = os.Getenv("SUPERPLUG_CONFIG_PATH")
@@ -152,9 +152,11 @@ func getRecords(c *gin.Context) {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
 
-	cardsCache = transformValToMap(sheetConfig, resp.Values)
+	recordCache := RecordCache{}
+	recordCache.Records, recordCache.Definitions = transformValToMap(sheetConfig, resp.Values)
 
-	c.JSON(200, cardsCache)
+	recordsCache[sheetName] = recordCache
+	c.JSON(200, recordsCache[sheetName])
 }
 
 func getRecord(c *gin.Context) {
@@ -162,8 +164,8 @@ func getRecord(c *gin.Context) {
 	sheetName := c.Param("name")
 	id := c.Param("id")
 	var sheetConfig ConfigSheet
-
-	if len(cardsCache) == 0 {
+	cachedRecord, ok := recordsCache[sheetName]
+	if !ok {
 		for _, value := range config.Sheets {
 			if value.Name == sheetName {
 				sheetConfig = value
@@ -177,23 +179,27 @@ func getRecord(c *gin.Context) {
 			log.Fatalf("Unable to retrieve data from sheet: %v", err)
 		}
 
-		cardsCache = transformValToMap(sheetConfig, resp.Values)
+		recordCache := RecordCache{}
+		recordCache.Records, recordCache.Definitions = transformValToMap(sheetConfig, resp.Values)
+		recordsCache[sheetName] = recordCache
+		cachedRecord = recordsCache[sheetName]
 	}
 
-	var lineCard map[string]interface{}
-	for _, card := range cardsCache {
-		if card["id"] == id {
-			lineCard = card
+	var record map[string]interface{}
+	for _, rec := range cachedRecord.Records {
+		if rec["id"] == id {
+			record = rec
 			break
 		}
 	}
 
-	c.JSON(200, lineCard)
+	c.JSON(200, record)
 }
 
-func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) []map[string]interface{} {
+func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[string]interface{}, map[string][]Tag) {
 
 	records := []map[string]interface{}{}
+	definitions := map[string][]Tag{}
 
 	for i, row := range values {
 		if len(row) == 0 {
@@ -210,19 +216,19 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) []map[st
 			}
 
 			if field.Value != "" {
-				record[field.Type] = field.Value
+				record[field.Definition] = field.Value
 			} else {
-				record[field.Type] = row[field.Index].(string)
+				record[field.Definition] = row[field.Index].(string)
 			}
 
-			val, ok := sheetConfig.Types[field.Type]
+			definition, ok := sheetConfig.Definitions[field.Definition]
 			if ok {
 				values := strings.Split(row[field.Index].(string), ",")
 				var valueTags []Tag
 				for i := range values {
 					valueId := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(values[i])), " ", "-")
 
-					val, ok := val[valueId]
+					val, ok := definition[valueId]
 					if ok {
 						val.Id = valueId
 						valueTags = append(valueTags, val)
@@ -231,17 +237,19 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) []map[st
 					}
 				}
 
-				record[field.Type] = valueTags
-				record[field.Type+"Text"] = row[field.Index].(string)
+				record[field.Definition] = valueTags
+				record[field.Definition+"Text"] = row[field.Index].(string)
 				options := ""
-				for _, v := range val {
+				definitions[field.Definition] = make([]Tag, len(definition))
+				for _, v := range definition {
 					if options == "" {
 						options = v.Name
 					} else {
 						options += "," + v.Name
 					}
+					definitions[field.Definition] = append(definitions[field.Definition], v)
 				}
-				record[field.Type+"Options"] = options
+				record[field.Definition+"Options"] = options
 			}
 		}
 
@@ -264,7 +272,7 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) []map[st
 		})
 	}
 
-	return records
+	return records, definitions
 }
 
 func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interface{} {
@@ -279,7 +287,7 @@ func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interf
 	values := make([]interface{}, size)
 
 	for _, field := range sheetConfig.Fields {
-		val, ok := data[field.Type]
+		val, ok := data[field.Definition]
 		if ok {
 			values[field.Index] = val
 		}
@@ -290,6 +298,11 @@ func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interf
 
 type Record struct {
 	Fields map[string]interface{} `json:"fields"`
+}
+
+type RecordCache struct {
+	Records     []map[string]interface{}
+	Definitions map[string][]Tag
 }
 
 type Config struct {
@@ -304,8 +317,8 @@ type ConfigSheet struct {
 	// TypeColors            map[string]string         `yaml:"typeColors"`
 	// TypeAbbreviations     map[string]string         `yaml:"typeAbbreviations"`
 	// CategoryAbbreviations map[string]string         `yaml:"categoryAbbreviations"`
-	Fields []ConfigSheetField        `yaml:"fields"`
-	Types  map[string]map[string]Tag `yaml:"types"`
+	Fields      []ConfigSheetField        `yaml:"fields"`
+	Definitions map[string]map[string]Tag `yaml:"definitions"`
 	// Categories            map[string]Tag     `yaml:"categories"`
 	// Types                 map[string]Tag     `yaml:"types"`
 }
@@ -313,7 +326,7 @@ type ConfigSheet struct {
 type ConfigSheetField struct {
 	Name       string `yaml:"name"`
 	Index      int    `yaml:"index"`
-	Type       string `yaml:"type"`
+	Definition string `yaml:"definition"`
 	Value      string `yaml:"value"`
 	Visibility string `yaml:"visibility"`
 }
