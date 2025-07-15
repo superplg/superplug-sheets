@@ -93,7 +93,7 @@
       buffet.setAttribute("items", JSON.stringify(assetData));
       if (definitions && definitions.categories) buffet.setAttribute("categories", JSON.stringify(definitions.categories));
       if (definitions && definitions.types) buffet.setAttribute("types", JSON.stringify(definitions.types));
-      buffet.setAttribute("sortTypes", "Date Descending, Alphabetical");
+      buffet.setAttribute("sortTypes", "Date descending, Date ascending, Title ascending, Title descending");
       document.body.appendChild(buffet);
     }
   </script>
