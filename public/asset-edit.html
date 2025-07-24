@@ -60,7 +60,7 @@
                 type: "textarea"
               });
               inputData.push({
-                id: "image",
+                id: "imageUrl",
                 label: "Image",
                 value: assetData.imageUrl,
                 type: "file"
@@ -194,6 +194,8 @@
       formData = e.detail.formData;
 
       formData.set("hidden_row_index", assetData.hidden_row_index);
+
+      console.log(formData.getAll("image"));
     }
   });
 </script>

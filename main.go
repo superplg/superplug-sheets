@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"maps"
-	"mime/multipart"
+	"net/http"
 	"os"
 	"slices"
 	"sort"
@@ -33,6 +34,7 @@ func main() {
 	if envConfigPath != "" {
 		configPath = envConfigPath
 	}
+	os.MkdirAll(configPath+"/files/", 0755)
 	yamlFile, err := os.ReadFile(configPath + "/config.local.yaml")
 	if err == nil {
 		yaml.Unmarshal(yamlFile, &config)
@@ -49,6 +51,7 @@ func main() {
 		ctx.JSON(200, configData)
 	})
 
+	r.GET("/files/:name", getFile)
 	r.GET("/data/:name", getRecords)
 	r.GET("/data/:name/:id", getRecord)
 	r.POST("/data/:name/:id", postRecord)
@@ -90,7 +93,7 @@ func postRecord(c *gin.Context) {
 	}
 	srv := getSheetsService()
 
-	var files []multipart.FileHeader
+	var data map[string]string = make(map[string]string)
 	form, _ := c.MultipartForm()
 	if form != nil && form.File != nil {
 		for k, v := range form.File {
@@ -99,12 +102,15 @@ func postRecord(c *gin.Context) {
 
 			for _, f := range v {
 				fmt.Println(&f.Filename)
-				files = append(files, *f)
+				src, _ := f.Open()
+				defer src.Close()
+				bytes, _ := io.ReadAll(src)
+				os.WriteFile(configPath+"/files/"+f.Filename, bytes, 0644)
+				data[k] = "/files/" + f.Filename
 			}
 		}
 	}
 
-	var data map[string]string = make(map[string]string)
 	for key, value := range c.Request.PostForm {
 		fmt.Printf("%v = %v \n", key, value)
 		if value[0] != "undefined" {
@@ -198,6 +204,19 @@ func getRecord(c *gin.Context) {
 	c.JSON(200, record)
 }
 
+func getFile(c *gin.Context) {
+	fileName := c.Param("name")
+
+	b, err := os.ReadFile(configPath + "/files/" + fileName)
+
+	if err != nil {
+		c.Status(404)
+	} else {
+		c.Header("Content-Disposition", "attachment; filename="+fileName)
+		c.Data(http.StatusOK, "application/octet-stream", b)
+	}
+}
+
 func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[string]interface{}, map[string][]Tag) {
 
 	records := []map[string]interface{}{}
@@ -281,8 +300,8 @@ func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interf
 	//var values []interface{}
 	size := 0
 	for _, field := range sheetConfig.Fields {
-		if field.Index-1 > size {
-			size = field.Index - 1
+		if field.Index+1 > size {
+			size = field.Index + 1
 		}
 	}
 
