@@ -21,6 +21,8 @@ spec:
             value: YOUR_FIREABSE_AUTH_DOMAIN
           - name: SUPERPLUG_CONFIG_PATH
             value: /mnt/config
+          - name: DEPLOY_DATE
+            value: DEPLOY_DATE_
       volumes:
       - name: assetfs
         csi:
