@@ -10,7 +10,7 @@
     let config = {};
     let email = "";
     let token = "";
-    fetch("/config").then(function (response) {
+    fetch("/config/bap-assets").then(function (response) {
       return response.json();
     }).then(function (data) {
       config = {

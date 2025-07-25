@@ -17,15 +17,16 @@
     const urlParams = new URLSearchParams(window.location.search);
     let id = urlParams.get("id");
 
-    fetch("/config").then(function (response) {
+    fetch("/config/bap-assets").then(function (response) {
       return response.json();
     }).then(function (data) {
-      config = {
+      config = data;
+      let firebaseConfig = {
         apiKey: data.firebaseApiKey,
         authDomain: data.firebaseAuthDomain,
       };
 
-      firebase.initializeApp(config);
+      firebase.initializeApp(firebaseConfig);
 
       // get user state
       firebase.auth().onAuthStateChanged((user) => {
@@ -55,7 +56,14 @@
                 id: "image",
                 value: assetData.imageUrl,
                 type: "img"
-              });              
+              });
+              inputData.push({
+                id: "preview",
+                label: "",
+                labelType: "",
+                value: assetData.secondaryLinks ? assetData.link + "," + assetData.secondaryLinks : assetData.link,
+                type: "preview_iframe"
+              });     
               inputData.push({
                 id: "description",
                 value: assetData.description,
@@ -138,7 +146,8 @@
           ]
         },
         {
-          title: "Edit"
+          title: "Edit",
+          titleColor: "#239d34"
         }
       ];
 
@@ -146,7 +155,7 @@
 
       // create buffet view
       var buffet = document.createElement('mv-elegant-buffet-view');
-      buffet.setAttribute("title", "Business Agentic Platform Assets");
+      buffet.setAttribute("titleText", "Business Agentic Platform Assets");
       buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
       buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
@@ -157,7 +166,7 @@
 </head>
 
 <body>
-  <mv-elegant-header title="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
+  <mv-elegant-header titleText="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
   <mv-elegant-spinner></mv-elegant-spinner>
 </body>
 

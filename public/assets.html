@@ -14,15 +14,16 @@
     let assetData = [];
     let definitions = [];
 
-    fetch("/config").then(function (response) {
+    fetch("/config/bap-assets").then(function (response) {
       return response.json();
     }).then(function (data) {
-      config = {
+      config = data;
+      let firebaseConfig = {
         apiKey: data.firebaseApiKey,
         authDomain: data.firebaseAuthDomain,
       };
 
-      firebase.initializeApp(config);
+      firebase.initializeApp(firebaseConfig);
 
       // get user state
       firebase.auth().onAuthStateChanged((user) => {
@@ -82,11 +83,16 @@
               title: "Log out"
             }
           ]
+        },
+        {
+          title: "Add",
+          titleUrl: "/asset-edit.html",
+          titleColor: "#239d34"
         }
       ];
       // create buffet
       var buffet = document.createElement('mv-elegant-buffet');
-      buffet.setAttribute("title", "Business Agentic Platform Assets");
+      buffet.setAttribute("titleText", "Business Agentic Platform Assets");
       buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
       buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
@@ -100,7 +106,7 @@
 </head>
 
 <body>
-  <mv-elegant-header title="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
+  <mv-elegant-header titleText="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
   <mv-elegant-spinner></mv-elegant-spinner>
 </body>
 

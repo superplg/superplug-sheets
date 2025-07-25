@@ -5,10 +5,12 @@ import (
 	"io"
 	"log"
 	"maps"
+	"math/rand"
 	"net/http"
 	"os"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,8 +48,32 @@ func main() {
 	r := gin.Default()
 	r.Use(static.Serve("/", static.LocalFile("./public", true)))
 
-	r.GET("/config", func(ctx *gin.Context) {
+	r.GET("/config/:name", func(ctx *gin.Context) {
+		sheetName := ctx.Param("name")
+		var sheetConfig ConfigSheet
+
+		for _, value := range config.Sheets {
+			if value.Name == sheetName {
+				sheetConfig = value
+				break
+			}
+		}
 		configData := map[string]string{"firebaseApiKey": os.Getenv("FIREBASE_API_KEY"), "firebaseAuthDomain": os.Getenv("FIREBASE_AUTH_DOMAIN")}
+
+		if sheetConfig.SheetId != "" {
+			for key, definition := range sheetConfig.Definitions {
+				options := ""
+				for _, v := range definition {
+					if options == "" {
+						options = v.Name
+					} else {
+						options += "," + v.Name
+					}
+				}
+				configData[key+"Options"] = options
+			}
+		}
+
 		ctx.JSON(200, configData)
 	})
 
@@ -118,10 +144,31 @@ func postRecord(c *gin.Context) {
 		}
 	}
 
+	// make sure we have an id, set if not
+	_, ok := data["id"]
+	if !ok {
+		id := strings.Replace(strings.ToLower(data["title"]), " ", "-", -1)
+		if len(id) > 16 {
+			id = id[:16]
+		}
+		if id != "" {
+			id = id + "-" + RandomString(4)
+		} else {
+			id = RandomString(20)
+		}
+
+		data["id"] = id
+	}
+
 	values := transformMapToVal(sheetConfig, data)
 	valuesArray := [][]interface{}{values}
 	valueRange := sheets.ValueRange{Values: valuesArray}
 	rowIndex := data["hidden_row_index"]
+
+	if rowIndex == "" {
+		rec := loadRecord(sheetConfig)
+		rowIndex = strconv.Itoa(len(rec.Records) + 4)
+	}
 
 	fmt.Println("Trying to update row: " + rowIndex)
 
@@ -172,26 +219,14 @@ func getRecord(c *gin.Context) {
 	sheetName := c.Param("name")
 	id := c.Param("id")
 	var sheetConfig ConfigSheet
-	cachedRecord, ok := recordsCache[sheetName]
-	if !ok {
-		for _, value := range config.Sheets {
-			if value.Name == sheetName {
-				sheetConfig = value
-				break
-			}
+	for _, value := range config.Sheets {
+		if value.Name == sheetName {
+			sheetConfig = value
+			break
 		}
-		srv := getSheetsService()
-
-		resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, sheetConfig.Range).Do()
-		if err != nil {
-			log.Fatalf("Unable to retrieve data from sheet: %v", err)
-		}
-
-		recordCache := RecordCache{}
-		recordCache.Records, recordCache.Definitions = transformValToMap(sheetConfig, resp.Values)
-		recordsCache[sheetName] = recordCache
-		cachedRecord = recordsCache[sheetName]
 	}
+
+	cachedRecord := loadCachedRecord(sheetConfig)
 
 	var record map[string]interface{}
 	for _, rec := range cachedRecord.Records {
@@ -215,6 +250,30 @@ func getFile(c *gin.Context) {
 		c.Header("Content-Disposition", "attachment; filename="+fileName)
 		c.Data(http.StatusOK, "application/octet-stream", b)
 	}
+}
+
+func loadCachedRecord(sheetConfig ConfigSheet) RecordCache {
+	cachedRecord, ok := recordsCache[sheetConfig.Name]
+	if !ok {
+		cachedRecord = loadRecord(sheetConfig)
+	}
+
+	return cachedRecord
+}
+
+func loadRecord(sheetConfig ConfigSheet) RecordCache {
+	srv := getSheetsService()
+
+	resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, sheetConfig.Range).Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve data from sheet: %v", err)
+	}
+
+	recordCache := RecordCache{}
+	recordCache.Records, recordCache.Definitions = transformValToMap(sheetConfig, resp.Values)
+	recordsCache[sheetConfig.Name] = recordCache
+
+	return recordCache
 }
 
 func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[string]interface{}, map[string][]Tag) {
@@ -261,7 +320,12 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 				record[field.Definition] = valueTags
 				record[field.Definition+"Text"] = row[field.Index].(string)
 				options := ""
+				// store all definitions
 				definitions[field.Definition] = slices.Collect(maps.Values(definition))
+				// sort definition slice
+				sort.Slice(definitions[field.Definition], func(i, j int) bool {
+					return definitions[field.Definition][i].Name < definitions[field.Definition][j].Name
+				})
 				for _, v := range definition {
 					if options == "" {
 						options = v.Name
@@ -297,7 +361,6 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 }
 
 func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interface{} {
-	//var values []interface{}
 	size := 0
 	for _, field := range sheetConfig.Fields {
 		if field.Index+1 > size {
@@ -363,4 +426,22 @@ type Tag struct {
 	Id       string `yaml:"id" json:"id"`
 	ImageUrl string `yaml:"imageUrl" json:"imageUrl"`
 	Symbol   string `yaml:"symbol" json:"symbol"`
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+var seededRand *rand.Rand = rand.New(
+	rand.NewSource(time.Now().UnixNano()))
+
+func StringWithCharset(length int, charset string) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func RandomString(length int) string {
+	return StringWithCharset(length, charset)
 }

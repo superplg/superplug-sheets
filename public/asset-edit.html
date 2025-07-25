@@ -18,15 +18,16 @@
     const urlParams = new URLSearchParams(window.location.search);
     let id = urlParams.get("id");
 
-    fetch("/config").then(function (response) {
+    fetch("/config/bap-assets").then(function (response) {
       return response.json();
     }).then(function (data) {
-      config = {
+      config = data;
+      let firebaseConfig = {
         apiKey: data.firebaseApiKey,
         authDomain: data.firebaseAuthDomain,
       };
 
-      firebase.initializeApp(config);
+      firebase.initializeApp(firebaseConfig);
 
       // get user state
       firebase.auth().onAuthStateChanged((user) => {
@@ -38,80 +39,36 @@
           user.getIdToken(true).then(function (idToken) {
             token = idToken;
 
-            fetch("/data/bap-assets/" + id, {
-              headers: {
-                'Authorization': 'Bearer ' + token
+            if (id) {
+              fetch("/data/bap-assets/" + id, {
+                headers: {
+                  'Authorization': 'Bearer ' + token
+                }
+              }).then(function (response) {
+                return response.json();
+              }).then(function (data) {
+                assetData = data;
+                setFields();
+              });
+            } else {
+              const startDate = new Date();
+              assetData = {
+                title: "",
+                description: "",
+                imageUrl: "",
+                authorName: userData.email,
+                dateTime: (startDate.getMonth() + 1).toString() + "/" + startDate.getDate().toString() + "/" + startDate.getFullYear().toString(),
+                link: "",
+                secondaryLinks: "",
+                typesText: "",
+                typesOptions: config.typesOptions,
+                categoriesText: "",
+                categoriesOptions: config.categoriesOptions,
+                levelsText: "",
+                levelsOptions: config.levelsOptions
               }
-            }).then(function (response) {
-              return response.json();
-            }).then(function (data) {
-              console.log(data);
-              assetData = data;
-              inputData.push({
-                id: "title",
-                label: "Title",
-                value: assetData.title,
-                type: "input"
-              });
-              inputData.push({
-                id: "description",
-                label: "Description",
-                value: assetData.description,
-                type: "textarea"
-              });
-              inputData.push({
-                id: "imageUrl",
-                label: "Image",
-                value: assetData.imageUrl,
-                type: "file"
-              });
-              inputData.push({
-                id: "authorName",
-                label: "Author",
-                value: assetData.authorName,
-                type: "input"
-              });
-              inputData.push({
-                id: "dateTime",
-                label: "Date published",
-                value: assetData.dateTime,
-                type: "input"
-              });
-              inputData.push({
-                id: "link",
-                label: "Primary link",
-                value: assetData.link,
-                type: "input"
-              });
-              inputData.push({
-                id: "secondaryLinks",
-                label: "Secondary link(s), comma separated",
-                value: assetData.secondaryLinks,
-                type: "textarea"
-              });
-              inputData.push({
-                id: "types",
-                label: "Content types",
-                value: assetData.typesText,
-                options: assetData.typesOptions,
-                type: "multiselect"
-              });
-              inputData.push({
-                id: "categories",
-                label: "Products",
-                value: assetData.categoriesText,
-                options: assetData.categoriesOptions,
-                type: "multiselect"
-              });
-              inputData.push({
-                id: "levels",
-                label: "Levels",
-                value: assetData.levelsText,
-                options: assetData.levelsOptions,
-                type: "multiselect"
-              });
-              load();
-            });
+              setFields();
+            }
           }).catch(function (error) {
             console.error(error);
           });
@@ -121,6 +78,74 @@
         }
       });
     });
+
+    function setFields() {
+      console.log(assetData);
+      inputData.push({
+        id: "title",
+        label: "Title",
+        value: assetData.title,
+        type: "input"
+      });
+      inputData.push({
+        id: "description",
+        label: "Description",
+        value: assetData.description,
+        type: "textarea"
+      });
+      inputData.push({
+        id: "imageUrl",
+        label: "Image",
+        value: assetData.imageUrl,
+        type: "file"
+      });
+      inputData.push({
+        id: "authorName",
+        label: "Author",
+        value: assetData.authorName,
+        type: "input"
+      });
+      inputData.push({
+        id: "dateTime",
+        label: "Date published",
+        value: assetData.dateTime,
+        type: "input"
+      });
+      inputData.push({
+        id: "link",
+        label: "Primary link",
+        value: assetData.link,
+        type: "input"
+      });
+      inputData.push({
+        id: "secondaryLinks",
+        label: "Secondary link(s), comma separated",
+        value: assetData.secondaryLinks,
+        type: "textarea"
+      });
+      inputData.push({
+        id: "types",
+        label: "Content types",
+        value: assetData.typesText,
+        options: assetData.typesOptions,
+        type: "multiselect"
+      });
+      inputData.push({
+        id: "categories",
+        label: "Products",
+        value: assetData.categoriesText,
+        options: assetData.categoriesOptions,
+        type: "multiselect"
+      });
+      inputData.push({
+        id: "levels",
+        label: "Levels",
+        value: assetData.levelsText,
+        options: assetData.levelsOptions,
+        type: "multiselect"
+      });
+      load();
+    }
 
     function load() {
       // remove header
@@ -146,7 +171,8 @@
           ]
         },
         {
-          title: "Save"
+          title: "Save",
+          titleColor: "#239d34"
         }
       ];
 
@@ -155,7 +181,7 @@
       // create buffet view
       var buffet = document.createElement('mv-elegant-buffet-edit');
       buffet.setAttribute("formId", "asset-form");
-      buffet.setAttribute("title", "Business Agentic Platform Assets");
+      buffet.setAttribute("titleText", "Business Agentic Platform Assets");
       buffet.setAttribute("titleUrl", "/assets.html");
       buffet.setAttribute("titleImageUrl", "logo.png");
       buffet.setAttribute("headerMenus", JSON.stringify(headerMenus));
@@ -166,7 +192,7 @@
 </head>
 
 <body>
-  <mv-elegant-header title="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
+  <mv-elegant-header titleText="Business Agentic Platform Assets" titleImageUrl="logo.png"></mv-elegant-header>
   <mv-elegant-spinner></mv-elegant-spinner>
 </body>
 
