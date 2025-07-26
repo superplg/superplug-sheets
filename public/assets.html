@@ -15,7 +15,8 @@
     let definitions = [];
 
     fetch("/config/bap-assets").then(function (response) {
-      return response.json();
+      if (response.status === 200)
+        return response.json();
     }).then(function (data) {
       config = data;
       let firebaseConfig = {
@@ -40,7 +41,14 @@
                 'Authorization': 'Bearer ' + token
               }
             }).then(function (response) {
-              return response.json();
+              if (response.status != 200) {
+                alert("This app is not yet allowed for your user.");
+                console.log("User not allowed, siging out.")
+                firebase.auth().signOut().then(function() {
+                  window.location.href = "/";
+                });
+              } else
+                return response.json();
             }).then(function (data) {
               console.log(data);
               assetData = data.records;

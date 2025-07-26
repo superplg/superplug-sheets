@@ -17,6 +17,7 @@ import (
 	// "encoding/json"
 	"fmt"
 
+	firebase "firebase.google.com/go"
 	"golang.org/x/oauth2/google"
 	"gopkg.in/yaml.v3"
 
@@ -30,6 +31,7 @@ import (
 var configPath = "."
 var config Config
 var recordsCache map[string]RecordCache = make(map[string]RecordCache)
+var app *firebase.App
 
 func main() {
 	var envConfigPath = os.Getenv("SUPERPLUG_CONFIG_PATH")
@@ -43,6 +45,12 @@ func main() {
 	} else {
 		fmt.Println("Could not load config:")
 		fmt.Println(err)
+	}
+
+	// init firebase sdk
+	app, err = firebase.NewApp(context.Background(), nil)
+	if err != nil {
+		log.Fatalf("error initializing app: %v\n", err)
 	}
 
 	r := gin.Default()
@@ -78,9 +86,9 @@ func main() {
 	})
 
 	r.GET("/files/:name", getFile)
-	r.GET("/data/:name", getRecords)
-	r.GET("/data/:name/:id", getRecord)
-	r.POST("/data/:name/:id", postRecord)
+	r.GET("/data/:name", jwtValidation(), getRecords)
+	r.GET("/data/:name/:id", jwtValidation(), getRecord)
+	r.POST("/data/:name/:id", jwtValidation(), postRecord)
 
 	fmt.Println("Starting service on 8080...")
 	r.Run(":8080")
@@ -387,6 +395,43 @@ func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interf
 	}
 
 	return values
+}
+
+func jwtValidation() gin.HandlerFunc {
+	client, err := app.Auth(context.Background())
+	if err != nil {
+		log.Fatalf("error getting Auth client: %v\n", err)
+	}
+
+	return func(c *gin.Context) {
+
+		var idToken = c.Request.Header["Authorization"]
+
+		if len(idToken) > 0 {
+			cleanedToken := strings.ReplaceAll(idToken[0], "Bearer ", "")
+			token, err := client.VerifyIDToken(context.Background(), cleanedToken)
+			if err != nil {
+				log.Printf("Error verifying ID token: %v, rejecting.\n", err)
+				c.AbortWithStatus(401)
+			} else {
+
+				email := token.Claims["email"].(string)
+
+				if !strings.HasSuffix(email, "google.com") {
+					log.Printf("Invalid user, aborting.")
+					c.AbortWithStatus(401)
+				} else {
+					c.Set("userEmail", token.Claims["email"])
+					c.Set("user_id", token.Claims["user_id"])
+				}
+			}
+		} else {
+			log.Printf("No id token found, rejecting.")
+			c.AbortWithStatus(401)
+		}
+
+		c.Next()
+	}
 }
 
 type Record struct {
