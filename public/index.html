@@ -33,69 +33,21 @@
 </head>
 
 <body>
-  <mv-elegant-header title="Business Agentic Platform Assets" titleImageUrl="logo.png" />
-
+  <mv-elegant-landing titleText="Business Agentic Platform Assets" titleImageUrl="logo.png" />
 </body>
 
 <script>
   let menus = [
     {
-      title: "Log in"
+      title: "Sign in"
     }];
 
-  let items = [
-    {
-      dateTime: "2 days ago",
-      categories: [
-        {
-          title: "Kubernetes",
-          url: "kubernetes.png"
-        }
-      ],
-      imageUrl: "dino.jpg",
-      title: "A New Frontier of Security: Creating Safe and Secure AI Models",
-      authorImageUrl: "profile.jpg",
-      authorName: "Chaim Gartenberg",
-      authorUrl: "https://google.com",
-      description: "Solve a prehistoric Google mystery and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.",
-      link: "https://google.com",
-      types: [
-        {
-          title: "Kubernetes",
-          url: "kubernetes.png"
-        }
-      ]
-    },
-    {
-      dateTime: "2 days ago",
-      categories: [
-        {
-          title: "Kubernetes",
-          url: "kubernetes.png"
-        }
-      ],
-      imageUrl: "dino.jpg",
-      title: "A New Frontier of Security: Creating Safe and Secure AI Models",
-      authorImageUrl: "profile.jpg",
-      authorName: "Chaim Gartenberg",
-      authorUrl: "https://google.com",
-      description: "Solve a prehistoric Google mystery and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.and learn the secret origins of our oldest-and largest-Googler: Stan the T.rex.",
-      link: "https://google.com",
-      types: [
-        {
-          title: "Kubernetes",
-          url: "kubernetes.png"
-        }
-      ]
-    }
-  ];
-
-  customElements.whenDefined('mv-elegant-header').then(() => {
-    let header = document.querySelector('mv-elegant-header');
-    header.setAttribute("headerMenus", JSON.stringify(menus));
+  customElements.whenDefined('mv-elegant-landing').then(() => {
+    let landing = document.querySelector('mv-elegant-landing');
+    landing.setAttribute("headerMenus", JSON.stringify(menus));
   });
 
-  document.addEventListener("Log in", e => {
+  document.addEventListener("Sign in", e => {
     console.log(e);
     var provider = new firebase.auth.GoogleAuthProvider();
     firebase.auth().signInWithPopup(provider)
@@ -115,13 +67,12 @@
         var credential = error.credential;
         console.error(error);
       });
-
   });
 </script>
 
 <style>
   body {
-    margin: 0xp;
+    margin: 0px;
   }
 </style>
 

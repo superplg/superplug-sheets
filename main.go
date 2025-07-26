@@ -167,21 +167,36 @@ func postRecord(c *gin.Context) {
 
 	if rowIndex == "" {
 		rec := loadRecord(sheetConfig)
-		rowIndex = strconv.Itoa(len(rec.Records) + 4)
+		rowIndex = strconv.Itoa(len(rec.Records))
 	}
+
+	offset := 4
+	num, err := strconv.Atoi(sheetConfig.StartRow)
+	if err == nil {
+		offset = num
+	}
+
+	newRowIndex := 0
+	num, err = strconv.Atoi(rowIndex)
+	if err == nil {
+		newRowIndex = num + offset
+	}
+
+	rowIndex = strconv.Itoa(newRowIndex)
 
 	fmt.Println("Trying to update row: " + rowIndex)
 
 	// get sheet
-	rangeString := "A" + rowIndex
-	rangePieces := strings.Split(sheetConfig.Range, "!")
-	if len(rangePieces) > 1 {
-		rangeString = rangePieces[0] + "!" + rangeString
-	}
+	// rangeString := "A" + rowIndex
+	// rangePieces := strings.Split(sheetConfig.Range, "!")
+	// if len(rangePieces) > 1 {
+	// 	rangeString = rangePieces[0] + "!" + rangeString
+	// }
+	rangeString := sheetConfig.Worksheet + "!" + sheetConfig.StartColumn + rowIndex
 
 	fmt.Println("Preparing to update range: " + rangeString)
 
-	_, err := srv.Spreadsheets.Values.Update(sheetConfig.SheetId, rangeString, &valueRange).ValueInputOption("RAW").Do()
+	_, err = srv.Spreadsheets.Values.Update(sheetConfig.SheetId, rangeString, &valueRange).ValueInputOption("RAW").Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
@@ -200,18 +215,10 @@ func getRecords(c *gin.Context) {
 			break
 		}
 	}
-	srv := getSheetsService()
 
-	resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, sheetConfig.Range).Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve data from sheet: %v", err)
-	}
+	recordResult := loadRecord(sheetConfig)
 
-	recordCache := RecordCache{}
-	recordCache.Records, recordCache.Definitions = transformValToMap(sheetConfig, resp.Values)
-
-	recordsCache[sheetName] = recordCache
-	c.JSON(200, recordsCache[sheetName])
+	c.JSON(200, recordResult)
 }
 
 func getRecord(c *gin.Context) {
@@ -264,7 +271,9 @@ func loadCachedRecord(sheetConfig ConfigSheet) RecordCache {
 func loadRecord(sheetConfig ConfigSheet) RecordCache {
 	srv := getSheetsService()
 
-	resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, sheetConfig.Range).Do()
+	rangeString := sheetConfig.Worksheet + "!" + sheetConfig.StartColumn + sheetConfig.StartRow + ":" + sheetConfig.EndColumn
+
+	resp, err := srv.Spreadsheets.Values.Get(sheetConfig.SheetId, rangeString).Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
@@ -394,10 +403,14 @@ type Config struct {
 }
 
 type ConfigSheet struct {
-	SheetId string          `yaml:"sheetId"`
-	Name    string          `yaml:"name"`
-	Range   string          `yaml:"range"`
-	Sort    ConfigSheetSort `yaml:"sort"`
+	SheetId string `yaml:"sheetId"`
+	Name    string `yaml:"name"`
+	//Range       string          `yaml:"range"`
+	Worksheet   string          `yaml:"worksheet"`
+	StartColumn string          `yaml:"startColumn"`
+	EndColumn   string          `yaml:"endColumn"`
+	StartRow    string          `yaml:"startRow"`
+	Sort        ConfigSheetSort `yaml:"sort"`
 	// TypeColors            map[string]string         `yaml:"typeColors"`
 	// TypeAbbreviations     map[string]string         `yaml:"typeAbbreviations"`
 	// CategoryAbbreviations map[string]string         `yaml:"categoryAbbreviations"`
