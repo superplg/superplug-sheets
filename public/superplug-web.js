@@ -3817,7 +3817,7 @@ function ps(t, e) {
     heroDescription: "Apigee Marketplace is a specialized online hub designed to connect data providers and consumers within various industrial sectors. Its focus is on facilitating the exchange of highly valuable industrial datasets, empowering businesses to optimize operations, accelerate innovation, and gain a competitive edge.",
     heroButton1: "Sign in",
     heroButton2: "Register"
-  })), s = E(e, "sections", 19, () => [
+  })), s = E(e, "sections", 23, () => [
     {
       sectionTitle: "Our mission is data & AI collaboration at scale",
       sectionDescription: "Apigee Marketplace is a specialized online hub designed to connect data providers and consumers within and across industries. Its focus is on facilitating the exchange of highly valuable industrial datasets, empowering businesses to optimize operations, accelerate innovation, and gain a competitive edge.",
@@ -3839,7 +3839,7 @@ function ps(t, e) {
       sectionImageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
     }
   ]);
-  typeof l() == "string" && l(JSON.parse(l())), typeof s() == "string" && l(JSON.parse(s()));
+  typeof l() == "string" && l(JSON.parse(l())), typeof s() == "string" && s(JSON.parse(s()));
   var d = fs(), o = V(d);
   ut(o, {
     get titleText() {
