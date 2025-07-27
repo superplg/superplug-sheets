@@ -316,6 +316,10 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 				record[field.Definition] = field.Value
 			} else {
 				record[field.Definition] = row[field.Index].(string)
+				if field.Definition == "dateTime" && field.Format != "" {
+					date1, _ := time.Parse(field.Format, row[field.Index].(string))
+					record["dateTimeIso"] = date1.Format(time.RFC3339)
+				}
 			}
 
 			definition, ok := sheetConfig.Definitions[field.Definition]
@@ -359,14 +363,23 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 	}
 
 	if sheetConfig.Sort.Field != "" {
+
+		dateFormat := "1/2/2006"
+		for _, v := range sheetConfig.Fields {
+			if v.Definition == sheetConfig.Sort.Field {
+				dateFormat = v.Format
+				break
+			}
+		}
+
 		sort.SliceStable(records, func(i, j int) bool {
 			dateString1 := records[i][sheetConfig.Sort.Field].(string)
 			dateString2 := records[j][sheetConfig.Sort.Field].(string)
 
-			date1, _ := time.Parse(sheetConfig.Sort.Format, dateString1)
-			date2, _ := time.Parse(sheetConfig.Sort.Format, dateString2)
+			date1, _ := time.Parse(dateFormat, dateString1)
+			date2, _ := time.Parse(dateFormat, dateString2)
 
-			if sheetConfig.Sort.Direction == "desc" {
+			if sheetConfig.Sort.Direction == "DESC" {
 				return date1.Unix() > date2.Unix()
 			} else {
 				return date1.Unix() < date2.Unix()
@@ -469,13 +482,13 @@ type ConfigSheetField struct {
 	Name       string `yaml:"name"`
 	Index      int    `yaml:"index"`
 	Definition string `yaml:"definition"`
+	Format     string `yaml:"format"`
 	Value      string `yaml:"value"`
 	Visibility string `yaml:"visibility"`
 }
 
 type ConfigSheetSort struct {
 	Field     string `yaml:"field"`
-	Format    string `yaml:"format"`
 	Direction string `yaml:"direction"`
 }
 

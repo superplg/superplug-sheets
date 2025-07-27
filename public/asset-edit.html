@@ -209,6 +209,9 @@
   document.addEventListener("Save", e => {
     fetch("/data/bap-assets/" + id, {
       method: "POST",
+      headers: {
+        'Authorization': 'Bearer ' + token
+      },
       body: formData
     }).then(function (response) {
       window.location.href = "/assets.html";
