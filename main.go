@@ -55,36 +55,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(static.Serve("/", static.LocalFile("./public", true)))
-
-	r.GET("/config/:name", func(ctx *gin.Context) {
-		sheetName := ctx.Param("name")
-		var sheetConfig ConfigSheet
-
-		for _, value := range config.Sheets {
-			if value.Name == sheetName {
-				sheetConfig = value
-				break
-			}
-		}
-		configData := map[string]string{"firebaseApiKey": os.Getenv("FIREBASE_API_KEY"), "firebaseAuthDomain": os.Getenv("FIREBASE_AUTH_DOMAIN")}
-
-		if sheetConfig.SheetId != "" {
-			for key, definition := range sheetConfig.Definitions {
-				options := ""
-				for _, v := range definition {
-					if options == "" {
-						options = v.Name
-					} else {
-						options += "," + v.Name
-					}
-				}
-				configData[key+"Options"] = options
-			}
-		}
-
-		ctx.JSON(200, configData)
-	})
-
+	r.GET("/config/:name", getConfig)
 	r.GET("/files/:name", getFile)
 	r.GET("/data/:name", jwtValidation(), getRecords)
 	r.GET("/data/:name/:id", jwtValidation(), getRecord)
@@ -113,6 +84,35 @@ func getSheetsService() *sheets.Service {
 	}
 
 	return srv
+}
+
+func getConfig(c *gin.Context) {
+	sheetName := c.Param("name")
+	var sheetConfig ConfigSheet
+
+	for _, value := range config.Sheets {
+		if value.Name == sheetName {
+			sheetConfig = value
+			break
+		}
+	}
+	configData := map[string]string{"firebaseApiKey": os.Getenv("FIREBASE_API_KEY"), "firebaseAuthDomain": os.Getenv("FIREBASE_AUTH_DOMAIN")}
+
+	if sheetConfig.SheetId != "" {
+		for key, definition := range sheetConfig.Definitions {
+			options := ""
+			for _, v := range definition {
+				if options == "" {
+					options = v.Name
+				} else {
+					options += "," + v.Name
+				}
+			}
+			configData[key+"Options"] = options
+		}
+	}
+
+	c.JSON(200, configData)
 }
 
 func postRecord(c *gin.Context) {
