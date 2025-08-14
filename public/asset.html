@@ -84,13 +84,15 @@
                 value: assetData.dateTime,
                 type: "div"
               });
-              inputData.push({
-                id: "types",
-                label: "Content types",
-                labelType: "h3",
-                value: assetData.typesText,
-                type: "ul"
-              });
+              if (assetData.typesText) {
+                inputData.push({
+                  id: "types",
+                  label: "Content types",
+                  labelType: "h3",
+                  value: assetData.typesText,
+                  type: "ul"
+                });
+              }
               inputData.push({
                 id: "links",
                 label: "Links",
@@ -98,20 +100,24 @@
                 value: assetData.secondaryLinks ? assetData.link + "," + assetData.secondaryLinks : assetData.link,
                 type: "ul_link_blank"
               });
-              inputData.push({
-                id: "categories",
-                label: "Products",
-                labelType: "h3",
-                value: assetData.categoriesText,
-                type: "ul"
-              });
-              inputData.push({
-                id: "levels",
-                label: "Levels",
-                labelType: "h3",
-                value: assetData.levelsText,
-                type: "ul"
-              });
+              if (assetData.categoriesText) {
+                inputData.push({
+                  id: "categories",
+                  label: "Products",
+                  labelType: "h3",
+                  value: assetData.categoriesText,
+                  type: "ul"
+                });
+              }
+              if (assetData.levelsText) {
+                inputData.push({
+                  id: "levels",
+                  label: "Levels",
+                  labelType: "h3",
+                  value: assetData.levelsText,
+                  type: "ul"
+                });
+              }
               load();
             });
           }).catch(function (error) {

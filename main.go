@@ -4,11 +4,9 @@ import (
 	"context"
 	"io"
 	"log"
-	"maps"
 	"math/rand"
 	"net/http"
 	"os"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,6 +40,20 @@ func main() {
 	yamlFile, err := os.ReadFile(configPath + "/config.local.yaml")
 	if err == nil {
 		yaml.Unmarshal(yamlFile, &config)
+		// load definitions maps
+		for sheetId, sheet := range config.Sheets {
+			config.Sheets[sheetId].DefinitionsMaps = make(map[string]map[string]Tag)
+			for k, v := range sheet.Definitions {
+				_, ok := sheet.DefinitionsMaps[k]
+				if !ok {
+					config.Sheets[sheetId].DefinitionsMaps[k] = make(map[string]Tag)
+				}
+
+				for _, s := range v {
+					config.Sheets[sheetId].DefinitionsMaps[k][s.Name] = s
+				}
+			}
+		}
 	} else {
 		fmt.Println("Could not load config:")
 		fmt.Println(err)
@@ -296,7 +308,6 @@ func loadRecord(sheetConfig ConfigSheet) RecordCache {
 func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[string]interface{}, map[string][]Tag) {
 
 	records := []map[string]interface{}{}
-	definitions := map[string][]Tag{}
 
 	for i, row := range values {
 		if len(row) == 0 {
@@ -322,12 +333,12 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 				}
 			}
 
-			definition, ok := sheetConfig.Definitions[field.Definition]
+			definition, ok := sheetConfig.DefinitionsMaps[field.Definition]
 			if ok {
 				values := strings.Split(row[field.Index].(string), ",")
 				var valueTags []Tag
 				for i := range values {
-					valueId := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(values[i])), " ", "-")
+					valueId := strings.TrimSpace(values[i])
 
 					val, ok := definition[valueId]
 					if ok {
@@ -340,20 +351,18 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 
 				record[field.Definition] = valueTags
 				record[field.Definition+"Text"] = row[field.Index].(string)
+			}
+
+			definitionArray, ok := sheetConfig.Definitions[field.Definition]
+
+			if ok {
 				options := ""
-				// store all definitions
-				definitions[field.Definition] = slices.Collect(maps.Values(definition))
-				// sort definition slice
-				sort.Slice(definitions[field.Definition], func(i, j int) bool {
-					return definitions[field.Definition][i].Name < definitions[field.Definition][j].Name
-				})
-				for _, v := range definition {
+				for _, v := range definitionArray {
 					if options == "" {
 						options = v.Name
 					} else {
 						options += "," + v.Name
 					}
-					// definitions[field.Definition] = append(definitions[field.Definition], v)
 				}
 				record[field.Definition+"Options"] = options
 			}
@@ -387,7 +396,7 @@ func transformValToMap(sheetConfig ConfigSheet, values [][]interface{}) ([]map[s
 		})
 	}
 
-	return records, definitions
+	return records, sheetConfig.Definitions
 }
 
 func transformMapToVal(sheetConfig ConfigSheet, data map[string]string) []interface{} {
@@ -461,21 +470,16 @@ type Config struct {
 }
 
 type ConfigSheet struct {
-	SheetId string `yaml:"sheetId"`
-	Name    string `yaml:"name"`
-	//Range       string          `yaml:"range"`
-	Worksheet   string          `yaml:"worksheet"`
-	StartColumn string          `yaml:"startColumn"`
-	EndColumn   string          `yaml:"endColumn"`
-	StartRow    string          `yaml:"startRow"`
-	Sort        ConfigSheetSort `yaml:"sort"`
-	// TypeColors            map[string]string         `yaml:"typeColors"`
-	// TypeAbbreviations     map[string]string         `yaml:"typeAbbreviations"`
-	// CategoryAbbreviations map[string]string         `yaml:"categoryAbbreviations"`
-	Fields      []ConfigSheetField        `yaml:"fields"`
-	Definitions map[string]map[string]Tag `yaml:"definitions"`
-	// Categories            map[string]Tag     `yaml:"categories"`
-	// Types                 map[string]Tag     `yaml:"types"`
+	SheetId         string                    `yaml:"sheetId"`
+	Name            string                    `yaml:"name"`
+	Worksheet       string                    `yaml:"worksheet"`
+	StartColumn     string                    `yaml:"startColumn"`
+	EndColumn       string                    `yaml:"endColumn"`
+	StartRow        string                    `yaml:"startRow"`
+	Sort            ConfigSheetSort           `yaml:"sort"`
+	Fields          []ConfigSheetField        `yaml:"fields"`
+	Definitions     map[string][]Tag          `yaml:"definitions"`
+	DefinitionsMaps map[string]map[string]Tag `yaml:"definitionsMaps"`
 }
 
 type ConfigSheetField struct {
